@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Uvse.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Uvse.Infrastructure.Persistence;
 namespace Uvse.Infrastructure.Migrations
 {
     [DbContext(typeof(UvseDbContext))]
-    partial class UvseDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260305233536_AddBibliographyEntries")]
+    partial class AddBibliographyEntries
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

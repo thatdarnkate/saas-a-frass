@@ -26,6 +26,7 @@ internal sealed class GetSummaryByIdQueryHandler : IRequestHandler<GetSummaryByI
     {
         var summary = await _dbContext.GeneratedSummaries
             .AsNoTracking()
+            .Include(generatedSummary => generatedSummary.BibliographyEntries)
             .SingleOrDefaultAsync(summary => summary.Id == request.SummaryId && summary.TenantId == _tenantService.TenantId, cancellationToken)
             ?? throw new KeyNotFoundException("Summary was not found.");
 
@@ -52,7 +53,11 @@ internal sealed class GetSummaryByIdQueryHandler : IRequestHandler<GetSummaryByI
             summary.RequestedByUserId,
             summary.FromUtc,
             summary.ToUtc,
-            summary.CreatedAtUtc);
+            summary.CreatedAtUtc,
+            summary.BibliographyEntries
+                .OrderBy(entry => entry.Position)
+                .Select(entry => new BibliographyEntryResult(entry.Id, entry.Position, entry.Hyperlink, entry.SourceText))
+                .ToArray());
     }
 
     private async Task EnsureProjectAccessAsync(Guid? projectId, CancellationToken cancellationToken)

@@ -26,6 +26,7 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
     public DbSet<ProjectUser> ProjectUsers => Set<ProjectUser>();
     public DbSet<TenantPlugin> TenantPlugins => Set<TenantPlugin>();
     public DbSet<GeneratedSummary> GeneratedSummaries => Set<GeneratedSummary>();
+    public DbSet<BibliographyEntry> BibliographyEntries => Set<BibliographyEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,10 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
             builder.HasKey(entity => entity.Id);
             builder.Property(entity => entity.ProviderKey).HasMaxLength(128);
             builder.Property(entity => entity.Title).HasMaxLength(256);
+            builder.HasMany(entity => entity.BibliographyEntries)
+                .WithOne(entry => entry.GeneratedSummary)
+                .HasForeignKey(entry => entry.GeneratedSummaryId)
+                .OnDelete(DeleteBehavior.Cascade);
             builder.HasIndex(entity => new
             {
                 entity.TargetType,
@@ -61,6 +66,15 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
                 entity.FromUtc,
                 entity.ToUtc
             });
+        });
+
+        modelBuilder.Entity<BibliographyEntry>(builder =>
+        {
+            builder.ToTable("bibliography_entries");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.Hyperlink).HasMaxLength(2048);
+            builder.Property(entity => entity.SourceText).HasColumnType("text");
+            builder.HasIndex(entity => new { entity.GeneratedSummaryId, entity.Position }).IsUnique();
         });
 
         modelBuilder.Entity<Datasource>(builder =>

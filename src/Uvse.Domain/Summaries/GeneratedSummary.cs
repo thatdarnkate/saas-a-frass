@@ -22,6 +22,7 @@ public sealed class GeneratedSummary : ITenantOwned
     public DateTimeOffset FromUtc { get; private set; }
     public DateTimeOffset ToUtc { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
+    public ICollection<BibliographyEntry> BibliographyEntries { get; private set; } = [];
 
     private GeneratedSummary()
     {
@@ -63,5 +64,13 @@ public sealed class GeneratedSummary : ITenantOwned
         FromUtc = fromUtc;
         ToUtc = toUtc;
         CreatedAtUtc = createdAtUtc;
+    }
+
+    public void AddBibliographyEntries(IEnumerable<BibliographyEntry> bibliographyEntries)
+    {
+        foreach (var bibliographyEntry in bibliographyEntries)
+        {
+            BibliographyEntries.Add(bibliographyEntry);
+        }
     }
 }

@@ -135,6 +135,7 @@ internal sealed class GenerateProjectSummaryCommandHandler : IRequestHandler<Gen
             request.FromUtc,
             request.ToUtc,
             DateTimeOffset.UtcNow);
+        summary.AddBibliographyEntries(BibliographyEntryFactory.Create(summary.Id, orderedArtifacts));
 
         _dbContext.GeneratedSummaries.Add(summary);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -152,7 +153,11 @@ internal sealed class GenerateProjectSummaryCommandHandler : IRequestHandler<Gen
             summary.RequestedByUserId,
             summary.FromUtc,
             summary.ToUtc,
-            summary.CreatedAtUtc);
+            summary.CreatedAtUtc,
+            summary.BibliographyEntries
+                .OrderBy(entry => entry.Position)
+                .Select(entry => new BibliographyEntryResult(entry.Id, entry.Position, entry.Hyperlink, entry.SourceText))
+                .ToArray());
     }
 
     private static SummaryRequestedModes CombineModes(IEnumerable<SummaryRequestedModes> modes)
@@ -198,6 +203,7 @@ internal sealed class GenerateProjectSummaryCommandHandler : IRequestHandler<Gen
         {
             var requested = await _dbContext.GeneratedSummaries
                 .AsNoTracking()
+                .Include(summary => summary.BibliographyEntries)
                 .SingleOrDefaultAsync(summary => summary.Id == requestedComparisonSummaryId.Value, cancellationToken)
                 ?? throw new KeyNotFoundException("Comparison summary was not found.");
 
@@ -211,6 +217,7 @@ internal sealed class GenerateProjectSummaryCommandHandler : IRequestHandler<Gen
 
         return await _dbContext.GeneratedSummaries
             .AsNoTracking()
+            .Include(summary => summary.BibliographyEntries)
             .Where(summary => summary.TargetType == targetType && summary.ProjectId == projectId && summary.DatasourceId == datasourceId)
             .OrderByDescending(summary => summary.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);

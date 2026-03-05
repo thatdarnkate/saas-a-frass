@@ -15,4 +15,5 @@ public sealed record SummaryResult(
     string RequestedByUserId,
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc,
+    IReadOnlyCollection<BibliographyEntryResult> BibliographyEntries);

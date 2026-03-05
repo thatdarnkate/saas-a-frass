@@ -83,6 +83,7 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
         }
 
         var existing = await _dbContext.GeneratedSummaries
+            .Include(summary => summary.BibliographyEntries)
             .FirstOrDefaultAsync(
                 s => s.TargetType == SummaryTargetType.Provider
                      && s.ProviderKey == request.ProviderKey
@@ -95,7 +96,14 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
 
         if (existing is not null)
         {
-            return new ProviderSummaryResult(existing.Id, existing.Title, existing.Content);
+            return new ProviderSummaryResult(
+                existing.Id,
+                existing.Title,
+                existing.Content,
+                existing.BibliographyEntries
+                    .OrderBy(entry => entry.Position)
+                    .Select(entry => new BibliographyEntryResult(entry.Id, entry.Position, entry.Hyperlink, entry.SourceText))
+                    .ToArray());
         }
 
         var artifacts = await provider.ArtifactSource.GetArtifactsAsync(
@@ -151,10 +159,18 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
             request.FromUtc,
             request.ToUtc,
             DateTimeOffset.UtcNow);
+        summary.AddBibliographyEntries(BibliographyEntryFactory.Create(summary.Id, orderedArtifacts));
 
         _dbContext.GeneratedSummaries.Add(summary);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new ProviderSummaryResult(summary.Id, summary.Title, summary.Content);
+        return new ProviderSummaryResult(
+            summary.Id,
+            summary.Title,
+            summary.Content,
+            summary.BibliographyEntries
+                .OrderBy(entry => entry.Position)
+                .Select(entry => new BibliographyEntryResult(entry.Id, entry.Position, entry.Hyperlink, entry.SourceText))
+                .ToArray());
     }
 }

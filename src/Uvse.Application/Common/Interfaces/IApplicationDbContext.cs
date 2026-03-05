@@ -15,5 +15,6 @@ public interface IApplicationDbContext
     DbSet<ProjectUser> ProjectUsers { get; }
     DbSet<TenantPlugin> TenantPlugins { get; }
     DbSet<GeneratedSummary> GeneratedSummaries { get; }
+    DbSet<BibliographyEntry> BibliographyEntries { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
