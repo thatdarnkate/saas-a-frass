@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: UVSE API
+  version: "v1"
+paths:
+  /api/admin/plugins/enable:
+    post:
+      summary: Enable a conceptual-domain provider for the active tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnablePluginRequest"
+      responses:
+        "200":
+          description: Provider enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnablePluginResponse"
+  /api/summaries/weekly:
+    post:
+      summary: Generate a tenant-scoped weekly summary with bibliography citations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateWeeklySummaryRequest"
+      responses:
+        "200":
+          description: Summary generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklySummaryResponse"
+components:
+  schemas:
+    EnablePluginRequest:
+      type: object
+      required: [providerKey]
+      properties:
+        providerKey:
+          type: string
+    EnablePluginResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        providerKey:
+          type: string
+        enabledAtUtc:
+          type: string
+          format: date-time
+    GenerateWeeklySummaryRequest:
+      type: object
+      required: [providerKey, fromUtc, toUtc]
+      properties:
+        providerKey:
+          type: string
+        fromUtc:
+          type: string
+          format: date-time
+        toUtc:
+          type: string
+          format: date-time
+        detailLevel:
+          type: string
+          enum: [Executive, Detailed]
+        audienceTone:
+          type: string
+          enum: [Technical, NonTechnical]
+    WeeklySummaryResponse:
+      type: object
+      properties:
+        summaryId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string

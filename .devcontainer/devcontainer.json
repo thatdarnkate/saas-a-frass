@@ -1,0 +1,21 @@
+{
+  "name": "uvse",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "postgres",
+  "workspaceFolder": "/workspaces/wrap-api",
+  "runServices": [
+    "postgres",
+    "redis",
+    "rabbitmq"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-azuretools.vscode-docker",
+        "ms-dotnettools.csdevkit"
+      ]
+    }
+  },
+  "postCreateCommand": "dotnet restore /workspaces/wrap-api/Uvse.slnx"
+}

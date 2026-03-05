@@ -1,0 +1,61 @@
+## .NET build output
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio files
+.vs/
+*.csproj.user
+*.dbmdl
+*.jfm
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## ASP.NET Core Data Protection keys — MUST NOT be committed
+.keys/
+*/.keys/
+
+## User secrets (local overrides for appsettings)
+secrets.json
+appsettings.*.local.json
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/repositories.config
+
+## Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+## dotnet publish output
+publish/
+
+## OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uvse-config
+  namespace: uvse
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  Authentication__Audience: "uvse-api"
+  Features__weekly-summary: "false"

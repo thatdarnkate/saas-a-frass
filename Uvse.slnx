@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Uvse.Application/Uvse.Application.csproj" />
+    <Project Path="src/Uvse.Domain/Uvse.Domain.csproj" />
+    <Project Path="src/Uvse.Infrastructure/Uvse.Infrastructure.csproj" />
+    <Project Path="src/Uvse.Web/Uvse.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Uvse.ArchitectureTests/Uvse.ArchitectureTests.csproj" />
+    <Project Path="tests/Uvse.IntegrationTests/Uvse.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
