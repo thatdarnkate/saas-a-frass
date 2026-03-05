@@ -8,16 +8,16 @@ using Uvse.Application.Common.Models;
 using Uvse.Domain.Summaries;
 using Uvse.Domain.Synthesis;
 
-namespace Uvse.Application.Summaries.Queries.GenerateWeeklySummary;
+namespace Uvse.Application.Summaries.Queries.GenerateProviderSummary;
 
-public sealed record GenerateWeeklySummaryQuery(
+public sealed record GenerateProviderSummaryQuery(
     [property: Required][property: StringLength(128, MinimumLength = 1)] string ProviderKey,
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
     SummaryDetailLevel DetailLevel,
-    SummaryAudienceTone AudienceTone) : IRequest<WeeklySummaryResult>;
+    SummaryAudienceTone AudienceTone) : IRequest<ProviderSummaryResult>;
 
-internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<GenerateWeeklySummaryQuery, WeeklySummaryResult>
+internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<GenerateProviderSummaryQuery, ProviderSummaryResult>
 {
     private static readonly string[] SuperscriptDigits = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"];
     private static readonly TimeSpan MaxQueryWindow = TimeSpan.FromDays(31);
@@ -28,7 +28,7 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
     private readonly IProviderRegistry _providerRegistry;
     private readonly IFeatureService _featureService;
 
-    public GenerateWeeklySummaryQueryHandler(
+    public GenerateProviderSummaryQueryHandler(
         IApplicationDbContext dbContext,
         ITenantService tenantService,
         IUserContext userContext,
@@ -42,7 +42,7 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
         _featureService = featureService;
     }
 
-    public async Task<WeeklySummaryResult> Handle(GenerateWeeklySummaryQuery request, CancellationToken cancellationToken)
+    public async Task<ProviderSummaryResult> Handle(GenerateProviderSummaryQuery request, CancellationToken cancellationToken)
     {
         if (request.ToUtc <= request.FromUtc)
         {
@@ -58,10 +58,10 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
         var tenantId = _tenantService.TenantId;
         var userId = _userContext.UserId;
 
-        var isFeatureEnabled = await _featureService.IsEnabledAsync(tenantId, "weekly-summary", cancellationToken);
+        var isFeatureEnabled = await _featureService.IsEnabledAsync(tenantId, "provider-summary", cancellationToken);
         if (!isFeatureEnabled)
         {
-            throw new FeatureNotEnabledException("weekly-summary");
+            throw new FeatureNotEnabledException("provider-summary");
         }
 
         var provider = _providerRegistry.GetRequiredProvider(request.ProviderKey);
@@ -76,10 +76,10 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
             throw new ProviderNotEnabledException(request.ProviderKey);
         }
 
-        // Return existing summary for the same parameters — makes the operation idempotent
         var existing = await _dbContext.GeneratedSummaries
             .FirstOrDefaultAsync(
-                s => s.ProviderKey == request.ProviderKey
+                s => s.TargetType == SummaryTargetType.Provider
+                     && s.ProviderKey == request.ProviderKey
                      && s.RequestedByUserId == userId
                      && s.DetailLevel == request.DetailLevel
                      && s.AudienceTone == request.AudienceTone
@@ -89,7 +89,7 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
 
         if (existing is not null)
         {
-            return new WeeklySummaryResult(existing.Id, existing.Title, existing.Content);
+            return new ProviderSummaryResult(existing.Id, existing.Title, existing.Content);
         }
 
         var artifacts = await provider.ArtifactSource.GetArtifactsAsync(
@@ -111,12 +111,19 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
             .OrderByDescending(artifact => artifact.OccurredAtUtc)
             .ToList();
 
-        var title = $"Weekly Summary ({request.FromUtc:yyyy-MM-dd} to {request.ToUtc:yyyy-MM-dd})";
+        var title = $"Provider Summary ({request.FromUtc:yyyy-MM-dd} to {request.ToUtc:yyyy-MM-dd})";
         var content = BuildSummary(title, request.DetailLevel, request.AudienceTone, orderedArtifacts);
         var summary = new GeneratedSummary(
             tenantId,
             request.ProviderKey,
             userId,
+            SummaryTargetType.Provider,
+            null,
+            null,
+            null,
+            request.DetailLevel == SummaryDetailLevel.Executive
+                ? SummaryRequestedModes.Executive
+                : SummaryRequestedModes.Detailed,
             request.DetailLevel,
             request.AudienceTone,
             title,
@@ -128,7 +135,7 @@ internal sealed class GenerateWeeklySummaryQueryHandler : IRequestHandler<Genera
         _dbContext.GeneratedSummaries.Add(summary);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return new WeeklySummaryResult(summary.Id, summary.Title, summary.Content);
+        return new ProviderSummaryResult(summary.Id, summary.Title, summary.Content);
     }
 
     private static string BuildSummary(

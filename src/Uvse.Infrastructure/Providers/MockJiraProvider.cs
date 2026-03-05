@@ -18,7 +18,7 @@ internal sealed class MockJiraProvider : IProvider, IArtifactSource
             new ArtifactRecord(
                 "UVSE-101",
                 "Delivered tenant-aware summary endpoint",
-                "Implemented the weekly summary API and validated tenant-scoped access for enabled providers.",
+                "Implemented the provider summary API and validated tenant-scoped access for enabled providers.",
                 "https://jira.example.local/browse/UVSE-101",
                 query.ToUtc.AddDays(-1),
                 query.RequestingUserId),

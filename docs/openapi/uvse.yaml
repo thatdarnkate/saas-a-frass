@@ -19,22 +19,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnablePluginResponse"
-  /api/summaries/weekly:
+  /api/summaries/providers:
     post:
-      summary: Generate a tenant-scoped weekly summary with bibliography citations
+      summary: Generate a tenant-scoped provider summary with bibliography citations
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/GenerateWeeklySummaryRequest"
+              $ref: "#/components/schemas/GenerateProviderSummaryRequest"
       responses:
         "200":
           description: Summary generated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WeeklySummaryResponse"
+                $ref: "#/components/schemas/ProviderSummaryResponse"
 components:
   schemas:
     EnablePluginRequest:
@@ -54,7 +54,7 @@ components:
         enabledAtUtc:
           type: string
           format: date-time
-    GenerateWeeklySummaryRequest:
+    GenerateProviderSummaryRequest:
       type: object
       required: [providerKey, fromUtc, toUtc]
       properties:
@@ -72,7 +72,7 @@ components:
         audienceTone:
           type: string
           enum: [Technical, NonTechnical]
-    WeeklySummaryResponse:
+    ProviderSummaryResponse:
       type: object
       properties:
         summaryId:

@@ -46,14 +46,21 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
             builder.Property(entity => entity.Title).HasMaxLength(256);
             builder.HasIndex(entity => new
             {
+                entity.TargetType,
+                entity.ProjectId,
+                entity.DatasourceId,
+                entity.CreatedAtUtc
+            });
+            builder.HasIndex(entity => new
+            {
                 entity.TenantId,
-                entity.ProviderKey,
                 entity.RequestedByUserId,
-                entity.DetailLevel,
-                entity.AudienceTone,
+                entity.TargetType,
+                entity.ProjectId,
+                entity.DatasourceId,
                 entity.FromUtc,
                 entity.ToUtc
-            }).IsUnique();
+            });
         });
 
         modelBuilder.Entity<Datasource>(builder =>

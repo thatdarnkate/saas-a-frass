@@ -72,8 +72,8 @@ Required settings:
 
 Optional settings:
 
-- `Features__weekly-summary`
-- `Features__Tenants__{tenantId}__weekly-summary`
+- `Features__provider-summary`
+- `Features__Tenants__{tenantId}__provider-summary`
 
 Example environment variables:
 
@@ -83,8 +83,8 @@ ConnectionStrings__Redis=prod-redis:6379
 Authentication__Authority=https://login.example.com/
 Authentication__Audience=uvse-api
 Security__DataProtection__KeyRingPath=/var/uvse/dataprotection
-Features__weekly-summary=false
-Features__Tenants__11111111-1111-1111-1111-111111111111__weekly-summary=true
+Features__provider-summary=false
+Features__Tenants__11111111-1111-1111-1111-111111111111__provider-summary=true
 ```
 
 ## 4A. Build and Run a Container Image
@@ -256,7 +256,7 @@ Test with a valid JWT containing:
 Then call:
 
 - `POST /api/admin/plugins/enable`
-- `POST /api/summaries/weekly`
+- `POST /api/summaries/providers`
 
 Confirm:
 

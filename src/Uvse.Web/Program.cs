@@ -22,7 +22,10 @@ using Uvse.Application.Projects.Commands.DeleteProject;
 using Uvse.Application.Projects.Commands.UpdateProject;
 using Uvse.Application.Projects.Queries.GetProjectById;
 using Uvse.Application.Projects.Queries.ListProjects;
-using Uvse.Application.Summaries.Queries.GenerateWeeklySummary;
+using Uvse.Application.Summaries.Commands.GenerateDatasourceSummary;
+using Uvse.Application.Summaries.Commands.GenerateProjectSummary;
+using Uvse.Application.Summaries.Queries.GetSummaryById;
+using Uvse.Application.Summaries.Queries.GenerateProviderSummary;
 using Uvse.Domain.Common;
 using Uvse.Infrastructure;
 using Uvse.Web.Contracts;
@@ -62,6 +65,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(ApiPolicies.ProjectManage, policy => policy.RequireRole(SystemRoles.ProjectManager, SystemRoles.TenantAdmin));
     options.AddPolicy(ApiPolicies.DatasourceRead, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
     options.AddPolicy(ApiPolicies.DatasourceManage, policy => policy.RequireRole(SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
+    options.AddPolicy(ApiPolicies.ProjectSummaryGenerate, policy => policy.RequireRole(SystemRoles.ProjectManager));
+    options.AddPolicy(ApiPolicies.DatasourceSummaryGenerate, policy => policy.RequireRole(SystemRoles.DataSourceManager));
     options.AddPolicy(SystemRoles.StandardUser, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.ProjectManager, SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
 });
 
@@ -297,15 +302,62 @@ datasourceRoutes.MapDelete(
     .WithOpenApi()
     .RequireRateLimiting(RateLimitPolicies.AdminOperations);
 
+var summaryRoutes = app.MapGroup("/api/summaries").RequireAuthorization(SystemRoles.StandardUser);
+
+summaryRoutes.MapGet(
+        "/{summaryId:guid}",
+        async (Guid summaryId, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new GetSummaryByIdQuery(summaryId), cancellationToken)))
+    .WithName("GetSummaryById")
+    .WithOpenApi();
+
+summaryRoutes.MapPost(
+        "/projects",
+        [Authorize(Policy = ApiPolicies.ProjectSummaryGenerate)] async (
+            GenerateProjectSummaryRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(
+                new GenerateProjectSummaryCommand(
+                    request.RequesterId,
+                    request.ProjectId,
+                    request.FromUtc,
+                    request.ToUtc,
+                    request.RequestedModes,
+                    request.ComparisonSummaryId),
+                cancellationToken)))
+    .WithName("GenerateProjectSummary")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.SummaryGeneration);
+
+summaryRoutes.MapPost(
+        "/datasources",
+        [Authorize(Policy = ApiPolicies.DatasourceSummaryGenerate)] async (
+            GenerateDatasourceSummaryRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(
+                new GenerateDatasourceSummaryCommand(
+                    request.RequesterId,
+                    request.DatasourceId,
+                    request.FromUtc,
+                    request.ToUtc,
+                    request.RequestedModes,
+                    request.ComparisonSummaryId),
+                cancellationToken)))
+    .WithName("GenerateDatasourceSummary")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.SummaryGeneration);
+
 app.MapPost(
-        "/api/summaries/weekly",
+        "/api/summaries/providers",
         [Authorize(Policy = SystemRoles.StandardUser)] async (
-            GenerateWeeklySummaryRequest request,
+            GenerateProviderSummaryRequest request,
             ISender sender,
             CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new GenerateWeeklySummaryQuery(
+                new GenerateProviderSummaryQuery(
                     request.ProviderKey,
                     request.FromUtc,
                     request.ToUtc,
@@ -315,7 +367,7 @@ app.MapPost(
 
             return Results.Ok(result);
         })
-    .WithName("GenerateWeeklySummary")
+    .WithName("GenerateProviderSummary")
     .WithOpenApi()
     .RequireRateLimiting(RateLimitPolicies.SummaryGeneration);
 
@@ -335,4 +387,6 @@ internal static class ApiPolicies
     public const string ProjectManage = "project-manage";
     public const string DatasourceRead = "datasource-read";
     public const string DatasourceManage = "datasource-manage";
+    public const string ProjectSummaryGenerate = "project-summary-generate";
+    public const string DatasourceSummaryGenerate = "datasource-summary-generate";
 }
