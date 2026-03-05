@@ -8,4 +8,6 @@ public sealed record GenerateProjectSummaryRequest(
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
     IReadOnlyCollection<SummaryRequestedModes> RequestedModes,
+    string LlmProvider,
+    string? LlmModel = null,
     Guid? ComparisonSummaryId = null);

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Uvse.Application.Common.Exceptions;
 using Uvse.Application.Common.Interfaces;
 using Uvse.Application.Common.Models;
+using Uvse.Application.Summaries.Common;
 using Uvse.Domain.Summaries;
 using Uvse.Domain.Synthesis;
 
@@ -15,7 +16,9 @@ public sealed record GenerateProviderSummaryQuery(
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
     SummaryDetailLevel DetailLevel,
-    SummaryAudienceTone AudienceTone) : IRequest<ProviderSummaryResult>;
+    SummaryAudienceTone AudienceTone,
+    [property: Required][property: StringLength(64, MinimumLength = 1)] string LlmProvider,
+    string? LlmModel = null) : IRequest<ProviderSummaryResult>;
 
 internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<GenerateProviderSummaryQuery, ProviderSummaryResult>
 {
@@ -27,19 +30,22 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
     private readonly IUserContext _userContext;
     private readonly IProviderRegistry _providerRegistry;
     private readonly IFeatureService _featureService;
+    private readonly ISummaryLlmRegistry _summaryLlmRegistry;
 
     public GenerateProviderSummaryQueryHandler(
         IApplicationDbContext dbContext,
         ITenantService tenantService,
         IUserContext userContext,
         IProviderRegistry providerRegistry,
-        IFeatureService featureService)
+        IFeatureService featureService,
+        ISummaryLlmRegistry summaryLlmRegistry)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
         _userContext = userContext;
         _providerRegistry = providerRegistry;
         _featureService = featureService;
+        _summaryLlmRegistry = summaryLlmRegistry;
     }
 
     public async Task<ProviderSummaryResult> Handle(GenerateProviderSummaryQuery request, CancellationToken cancellationToken)
@@ -112,11 +118,25 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
             .ToList();
 
         var title = $"Provider Summary ({request.FromUtc:yyyy-MM-dd} to {request.ToUtc:yyyy-MM-dd})";
-        var content = BuildSummary(title, request.DetailLevel, request.AudienceTone, orderedArtifacts);
+        var llm = _summaryLlmRegistry.GetRequiredProvider(request.LlmProvider);
+        var content = await llm.GenerateSummaryAsync(
+            new SummaryLlmRequest(
+                request.LlmProvider,
+                request.LlmModel,
+                SummaryTargetType.Provider,
+                title,
+                request.DetailLevel == SummaryDetailLevel.Executive
+                    ? SummaryRequestedModes.Executive
+                    : SummaryRequestedModes.Detailed,
+                orderedArtifacts,
+                null),
+            cancellationToken);
         var summary = new GeneratedSummary(
             tenantId,
             request.ProviderKey,
             userId,
+            llm.ProviderKey,
+            request.LlmModel,
             SummaryTargetType.Provider,
             null,
             null,
@@ -137,48 +157,4 @@ internal sealed class GenerateProviderSummaryQueryHandler : IRequestHandler<Gene
 
         return new ProviderSummaryResult(summary.Id, summary.Title, summary.Content);
     }
-
-    private static string BuildSummary(
-        string title,
-        SummaryDetailLevel detailLevel,
-        SummaryAudienceTone audienceTone,
-        IReadOnlyList<ArtifactRecord> artifacts)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine(title);
-        builder.AppendLine();
-        builder.AppendLine(audienceTone == SummaryAudienceTone.Technical
-            ? "Audience: Technical"
-            : "Audience: Non-Technical");
-        builder.AppendLine(detailLevel == SummaryDetailLevel.Executive
-            ? "Detail Level: Executive"
-            : "Detail Level: Detailed");
-        builder.AppendLine();
-        builder.AppendLine("Highlights");
-
-        for (var index = 0; index < artifacts.Count; index++)
-        {
-            var artifact = artifacts[index];
-            var citation = ToSuperscript(index + 1);
-            var detail = detailLevel == SummaryDetailLevel.Executive
-                ? artifact.Title
-                : $"{artifact.Title}: {artifact.Summary}";
-            builder.AppendLine($"- {detail}{citation}");
-        }
-
-        builder.AppendLine();
-        builder.AppendLine("Bibliography");
-
-        for (var index = 0; index < artifacts.Count; index++)
-        {
-            var artifact = artifacts[index];
-            builder.AppendLine(
-                $"[{index + 1}] {artifact.Title} ({artifact.OccurredAtUtc:yyyy-MM-dd}) - {artifact.SourceUrl}");
-        }
-
-        return builder.ToString().TrimEnd();
-    }
-
-    private static string ToSuperscript(int number) =>
-        string.Concat(number.ToString().Select(digit => SuperscriptDigits[digit - '0']));
 }

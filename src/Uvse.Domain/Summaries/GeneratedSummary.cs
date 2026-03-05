@@ -8,6 +8,8 @@ public sealed class GeneratedSummary : ITenantOwned
     public Guid TenantId { get; private set; }
     public string ProviderKey { get; private set; } = string.Empty;
     public string RequestedByUserId { get; private set; } = string.Empty;
+    public string LlmProviderKey { get; private set; } = string.Empty;
+    public string? LlmModel { get; private set; }
     public SummaryTargetType TargetType { get; private set; } = SummaryTargetType.Provider;
     public Guid? ProjectId { get; private set; }
     public Guid? DatasourceId { get; private set; }
@@ -29,6 +31,8 @@ public sealed class GeneratedSummary : ITenantOwned
         Guid tenantId,
         string providerKey,
         string requestedByUserId,
+        string llmProviderKey,
+        string? llmModel,
         SummaryTargetType targetType,
         Guid? projectId,
         Guid? datasourceId,
@@ -45,6 +49,8 @@ public sealed class GeneratedSummary : ITenantOwned
         TenantId = tenantId;
         ProviderKey = providerKey;
         RequestedByUserId = requestedByUserId;
+        LlmProviderKey = llmProviderKey;
+        LlmModel = llmModel;
         TargetType = targetType;
         ProjectId = projectId;
         DatasourceId = datasourceId;

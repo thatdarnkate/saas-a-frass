@@ -47,6 +47,8 @@ internal sealed class GetSummaryByIdQueryHandler : IRequestHandler<GetSummaryByI
             summary.ProjectId,
             summary.DatasourceId,
             summary.RequestedModes,
+            summary.LlmProviderKey,
+            summary.LlmModel,
             summary.RequestedByUserId,
             summary.FromUtc,
             summary.ToUtc,

@@ -324,6 +324,8 @@ summaryRoutes.MapPost(
                     request.FromUtc,
                     request.ToUtc,
                     request.RequestedModes,
+                    request.LlmProvider,
+                    request.LlmModel,
                     request.ComparisonSummaryId),
                 cancellationToken)))
     .WithName("GenerateProjectSummary")
@@ -343,6 +345,8 @@ summaryRoutes.MapPost(
                     request.FromUtc,
                     request.ToUtc,
                     request.RequestedModes,
+                    request.LlmProvider,
+                    request.LlmModel,
                     request.ComparisonSummaryId),
                 cancellationToken)))
     .WithName("GenerateDatasourceSummary")
@@ -362,7 +366,9 @@ app.MapPost(
                     request.FromUtc,
                     request.ToUtc,
                     request.DetailLevel,
-                    request.AudienceTone),
+                    request.AudienceTone,
+                    request.LlmProvider,
+                    request.LlmModel),
                 cancellationToken);
 
             return Results.Ok(result);

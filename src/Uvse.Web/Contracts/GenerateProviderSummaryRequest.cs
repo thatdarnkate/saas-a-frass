@@ -7,4 +7,6 @@ public sealed record GenerateProviderSummaryRequest(
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
     SummaryDetailLevel DetailLevel,
-    SummaryAudienceTone AudienceTone);
+    SummaryAudienceTone AudienceTone,
+    string LlmProvider,
+    string? LlmModel = null);

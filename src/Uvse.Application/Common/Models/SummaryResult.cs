@@ -10,6 +10,8 @@ public sealed record SummaryResult(
     Guid? ProjectId,
     Guid? DatasourceId,
     SummaryRequestedModes RequestedModes,
+    string LlmProviderKey,
+    string? LlmModel,
     string RequestedByUserId,
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,

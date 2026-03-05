@@ -18,6 +18,8 @@ public sealed record GenerateDatasourceSummaryCommand(
     DateTimeOffset FromUtc,
     DateTimeOffset ToUtc,
     [property: MinLength(1)] IReadOnlyCollection<SummaryRequestedModes> RequestedModes,
+    [property: Required][property: StringLength(64, MinimumLength = 1)] string LlmProvider,
+    string? LlmModel = null,
     Guid? ComparisonSummaryId = null) : IRequest<SummaryResult>;
 
 internal sealed class GenerateDatasourceSummaryCommandHandler : IRequestHandler<GenerateDatasourceSummaryCommand, SummaryResult>
@@ -27,17 +29,20 @@ internal sealed class GenerateDatasourceSummaryCommandHandler : IRequestHandler<
     private readonly ITenantService _tenantService;
     private readonly IUserContext _userContext;
     private readonly IProviderRegistry _providerRegistry;
+    private readonly ISummaryLlmRegistry _summaryLlmRegistry;
 
     public GenerateDatasourceSummaryCommandHandler(
         IApplicationDbContext dbContext,
         ITenantService tenantService,
         IUserContext userContext,
-        IProviderRegistry providerRegistry)
+        IProviderRegistry providerRegistry,
+        ISummaryLlmRegistry summaryLlmRegistry)
     {
         _dbContext = dbContext;
         _tenantService = tenantService;
         _userContext = userContext;
         _providerRegistry = providerRegistry;
+        _summaryLlmRegistry = summaryLlmRegistry;
     }
 
     public async Task<SummaryResult> Handle(GenerateDatasourceSummaryCommand request, CancellationToken cancellationToken)
@@ -87,12 +92,24 @@ internal sealed class GenerateDatasourceSummaryCommandHandler : IRequestHandler<
         var modes = CombineModes(request.RequestedModes);
         var orderedArtifacts = artifacts.OrderByDescending(artifact => artifact.OccurredAtUtc).ToList();
         var title = $"Datasource Summary: {datasource.Name} ({request.FromUtc:yyyy-MM-dd} to {request.ToUtc:yyyy-MM-dd})";
-        var content = SummaryComposer.Compose(title, modes, orderedArtifacts, comparison);
+        var llm = _summaryLlmRegistry.GetRequiredProvider(request.LlmProvider);
+        var content = await llm.GenerateSummaryAsync(
+            new SummaryLlmRequest(
+                request.LlmProvider,
+                request.LlmModel,
+                SummaryTargetType.Datasource,
+                title,
+                modes,
+                orderedArtifacts,
+                comparison),
+            cancellationToken);
 
         var summary = new GeneratedSummary(
             tenantId,
             datasource.Type,
             request.RequesterId,
+            llm.ProviderKey,
+            request.LlmModel,
             SummaryTargetType.Datasource,
             null,
             request.DatasourceId,
@@ -117,6 +134,8 @@ internal sealed class GenerateDatasourceSummaryCommandHandler : IRequestHandler<
             summary.ProjectId,
             summary.DatasourceId,
             summary.RequestedModes,
+            summary.LlmProviderKey,
+            summary.LlmModel,
             summary.RequestedByUserId,
             summary.FromUtc,
             summary.ToUtc,

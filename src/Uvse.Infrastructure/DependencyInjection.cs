@@ -11,6 +11,7 @@ using Uvse.Infrastructure.BackgroundJobs;
 using Uvse.Infrastructure.Persistence;
 using Uvse.Infrastructure.Providers;
 using Uvse.Infrastructure.Security;
+using Uvse.Infrastructure.Summaries;
 using Uvse.Infrastructure.Tenancy;
 
 namespace Uvse.Infrastructure;
@@ -78,6 +79,12 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IPluginSettingsEncryptor, DataProtectionPluginSettingsEncryptor>();
+        services.AddSingleton<ISummaryLlmProvider>(_ => new TemplateSummaryLlmProvider("template"));
+        services.AddSingleton<ISummaryLlmProvider>(_ => new TemplateSummaryLlmProvider("openai"));
+        services.AddSingleton<ISummaryLlmProvider>(_ => new TemplateSummaryLlmProvider("gemini"));
+        services.AddSingleton<ISummaryLlmProvider>(_ => new TemplateSummaryLlmProvider("claude"));
+        services.AddSingleton<ISummaryLlmProvider>(_ => new TemplateSummaryLlmProvider("copilot"));
+        services.AddSingleton<ISummaryLlmRegistry, SummaryLlmRegistry>();
 
         services.AddScoped<IFeatureService, TenantFeatureService>();
 
