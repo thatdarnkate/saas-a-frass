@@ -12,6 +12,16 @@ using OpenTelemetry.Trace;
 using Uvse.Application;
 using Uvse.Application.Common.Exceptions;
 using Uvse.Application.Admin.Commands.EnablePlugin;
+using Uvse.Application.Datasources.Commands.CreateDatasource;
+using Uvse.Application.Datasources.Commands.DeleteDatasource;
+using Uvse.Application.Datasources.Commands.UpdateDatasource;
+using Uvse.Application.Datasources.Queries.GetDatasourceById;
+using Uvse.Application.Datasources.Queries.ListDatasources;
+using Uvse.Application.Projects.Commands.CreateProject;
+using Uvse.Application.Projects.Commands.DeleteProject;
+using Uvse.Application.Projects.Commands.UpdateProject;
+using Uvse.Application.Projects.Queries.GetProjectById;
+using Uvse.Application.Projects.Queries.ListProjects;
 using Uvse.Application.Summaries.Queries.GenerateWeeklySummary;
 using Uvse.Domain.Common;
 using Uvse.Infrastructure;
@@ -48,7 +58,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(SystemRoles.TenantAdmin, policy => policy.RequireRole(SystemRoles.TenantAdmin));
-    options.AddPolicy(SystemRoles.StandardUser, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.TenantAdmin));
+    options.AddPolicy(ApiPolicies.ProjectRead, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.ProjectManager, SystemRoles.TenantAdmin));
+    options.AddPolicy(ApiPolicies.ProjectManage, policy => policy.RequireRole(SystemRoles.ProjectManager, SystemRoles.TenantAdmin));
+    options.AddPolicy(ApiPolicies.DatasourceRead, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
+    options.AddPolicy(ApiPolicies.DatasourceManage, policy => policy.RequireRole(SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
+    options.AddPolicy(SystemRoles.StandardUser, policy => policy.RequireRole(SystemRoles.StandardUser, SystemRoles.ProjectManager, SystemRoles.DataSourceManager, SystemRoles.TenantAdmin));
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -180,6 +194,109 @@ app.MapPost(
     .WithOpenApi()
     .RequireRateLimiting(RateLimitPolicies.AdminOperations);
 
+var projectRoutes = app.MapGroup("/api/projects").RequireAuthorization(ApiPolicies.ProjectRead);
+
+projectRoutes.MapGet(
+        "/",
+        async (ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new ListProjectsQuery(), cancellationToken)))
+    .WithName("ListProjects")
+    .WithOpenApi();
+
+projectRoutes.MapGet(
+        "/{projectId:guid}",
+        async (Guid projectId, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new GetProjectByIdQuery(projectId), cancellationToken)))
+    .WithName("GetProjectById")
+    .WithOpenApi();
+
+projectRoutes.MapPost(
+        "/",
+        [Authorize(Policy = ApiPolicies.ProjectManage)] async (CreateProjectRequest request, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new CreateProjectCommand(request.Name, request.AllowedUserIds, request.DatasourceIds), cancellationToken)))
+    .WithName("CreateProject")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
+projectRoutes.MapPut(
+        "/{projectId:guid}",
+        [Authorize(Policy = ApiPolicies.ProjectManage)] async (Guid projectId, UpdateProjectRequest request, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new UpdateProjectCommand(projectId, request.Name, request.AllowedUserIds, request.DatasourceIds), cancellationToken)))
+    .WithName("UpdateProject")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
+projectRoutes.MapDelete(
+        "/{projectId:guid}",
+        [Authorize(Policy = ApiPolicies.ProjectManage)] async (Guid projectId, ISender sender, CancellationToken cancellationToken) =>
+        {
+            await sender.Send(new DeleteProjectCommand(projectId), cancellationToken);
+            return Results.NoContent();
+        })
+    .WithName("DeleteProject")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
+var datasourceRoutes = app.MapGroup("/api/datasources").RequireAuthorization(ApiPolicies.DatasourceRead);
+
+datasourceRoutes.MapGet(
+        "/",
+        async (ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new ListDatasourcesQuery(), cancellationToken)))
+    .WithName("ListDatasources")
+    .WithOpenApi();
+
+datasourceRoutes.MapGet(
+        "/{datasourceId:guid}",
+        async (Guid datasourceId, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(new GetDatasourceByIdQuery(datasourceId), cancellationToken)))
+    .WithName("GetDatasourceById")
+    .WithOpenApi();
+
+datasourceRoutes.MapPost(
+        "/",
+        [Authorize(Policy = ApiPolicies.DatasourceManage)] async (CreateDatasourceRequest request, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(
+                new CreateDatasourceCommand(
+                    request.Name,
+                    request.Type,
+                    request.IsActive,
+                    request.AccessScope,
+                    request.AllowedUserIds,
+                    request.ConnectionDetails),
+                cancellationToken)))
+    .WithName("CreateDatasource")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
+datasourceRoutes.MapPut(
+        "/{datasourceId:guid}",
+        [Authorize(Policy = ApiPolicies.DatasourceManage)] async (Guid datasourceId, UpdateDatasourceRequest request, ISender sender, CancellationToken cancellationToken) =>
+            Results.Ok(await sender.Send(
+                new UpdateDatasourceCommand(
+                    datasourceId,
+                    request.Name,
+                    request.Type,
+                    request.IsActive,
+                    request.AccessScope,
+                    request.AllowedUserIds,
+                    request.ConnectionDetails),
+                cancellationToken)))
+    .WithName("UpdateDatasource")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
+datasourceRoutes.MapDelete(
+        "/{datasourceId:guid}",
+        [Authorize(Policy = ApiPolicies.DatasourceManage)] async (Guid datasourceId, ISender sender, CancellationToken cancellationToken) =>
+        {
+            await sender.Send(new DeleteDatasourceCommand(datasourceId), cancellationToken);
+            return Results.NoContent();
+        })
+    .WithName("DeleteDatasource")
+    .WithOpenApi()
+    .RequireRateLimiting(RateLimitPolicies.AdminOperations);
+
 app.MapPost(
         "/api/summaries/weekly",
         [Authorize(Policy = SystemRoles.StandardUser)] async (
@@ -210,4 +327,12 @@ internal static class RateLimitPolicies
 {
     public const string SummaryGeneration = "summary-generation";
     public const string AdminOperations = "admin-operations";
+}
+
+internal static class ApiPolicies
+{
+    public const string ProjectRead = "project-read";
+    public const string ProjectManage = "project-manage";
+    public const string DatasourceRead = "datasource-read";
+    public const string DatasourceManage = "datasource-manage";
 }

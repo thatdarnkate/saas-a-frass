@@ -2,7 +2,9 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Uvse.Application.Common.Interfaces;
 using Uvse.Domain.Common;
+using Uvse.Domain.Datasources;
 using Uvse.Domain.Plugins;
+using Uvse.Domain.Projects;
 using Uvse.Domain.Summaries;
 
 namespace Uvse.Infrastructure.Persistence;
@@ -17,6 +19,11 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
         _tenantService = tenantService;
     }
 
+    public DbSet<Datasource> Datasources => Set<Datasource>();
+    public DbSet<DatasourceUser> DatasourceUsers => Set<DatasourceUser>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<ProjectDatasource> ProjectDatasources => Set<ProjectDatasource>();
+    public DbSet<ProjectUser> ProjectUsers => Set<ProjectUser>();
     public DbSet<TenantPlugin> TenantPlugins => Set<TenantPlugin>();
     public DbSet<GeneratedSummary> GeneratedSummaries => Set<GeneratedSummary>();
 
@@ -47,6 +54,63 @@ public sealed class UvseDbContext : DbContext, IApplicationDbContext
                 entity.FromUtc,
                 entity.ToUtc
             }).IsUnique();
+        });
+
+        modelBuilder.Entity<Datasource>(builder =>
+        {
+            builder.ToTable("datasources");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.Name).HasMaxLength(200);
+            builder.Property(entity => entity.Type).HasMaxLength(100);
+            builder.Property(entity => entity.ConnectionDetailsEncryptedJson).HasColumnType("jsonb");
+            builder.HasIndex(entity => new { entity.TenantId, entity.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<DatasourceUser>(builder =>
+        {
+            builder.ToTable("datasource_users");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.UserId).HasMaxLength(200);
+            builder.HasIndex(entity => new { entity.DatasourceId, entity.UserId }).IsUnique();
+            builder.HasOne(entity => entity.Datasource)
+                .WithMany(parent => parent.DatasourceUsers)
+                .HasForeignKey(entity => entity.DatasourceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Project>(builder =>
+        {
+            builder.ToTable("projects");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.Name).HasMaxLength(200);
+            builder.HasIndex(entity => new { entity.TenantId, entity.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<ProjectUser>(builder =>
+        {
+            builder.ToTable("project_users");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.UserId).HasMaxLength(200);
+            builder.HasIndex(entity => new { entity.ProjectId, entity.UserId }).IsUnique();
+            builder.HasOne(entity => entity.Project)
+                .WithMany(parent => parent.ProjectUsers)
+                .HasForeignKey(entity => entity.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ProjectDatasource>(builder =>
+        {
+            builder.ToTable("project_datasources");
+            builder.HasKey(entity => entity.Id);
+            builder.HasIndex(entity => new { entity.ProjectId, entity.DatasourceId }).IsUnique();
+            builder.HasOne(entity => entity.Project)
+                .WithMany(parent => parent.ProjectDatasources)
+                .HasForeignKey(entity => entity.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(entity => entity.Datasource)
+                .WithMany(parent => parent.ProjectDatasources)
+                .HasForeignKey(entity => entity.DatasourceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()
