@@ -3,6 +3,12 @@ info:
   title: UVSE API
   version: "v1"
 paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
   /api/admin/plugins/enable:
     post:
       summary: Enable a conceptual-domain provider for the active tenant
@@ -19,6 +25,176 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnablePluginResponse"
+  /api/projects:
+    get:
+      summary: List projects visible to the current tenant user
+      responses:
+        "200":
+          description: Projects returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectResponse"
+    post:
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "200":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+  /api/projects/{projectId}:
+    get:
+      summary: Get a project by id
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "200":
+          description: Project returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+    put:
+      summary: Update a project
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectRequest"
+      responses:
+        "200":
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+    delete:
+      summary: Delete a project
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+      responses:
+        "204":
+          description: Project deleted
+  /api/datasources:
+    get:
+      summary: List datasources visible to the current tenant user
+      responses:
+        "200":
+          description: Datasources returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DatasourceResponse"
+    post:
+      summary: Create a datasource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDatasourceRequest"
+      responses:
+        "200":
+          description: Datasource created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasourceResponse"
+  /api/datasources/{datasourceId}:
+    get:
+      summary: Get a datasource by id
+      parameters:
+        - $ref: "#/components/parameters/DatasourceId"
+      responses:
+        "200":
+          description: Datasource returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasourceResponse"
+    put:
+      summary: Update a datasource
+      parameters:
+        - $ref: "#/components/parameters/DatasourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDatasourceRequest"
+      responses:
+        "200":
+          description: Datasource updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasourceResponse"
+    delete:
+      summary: Delete a datasource
+      parameters:
+        - $ref: "#/components/parameters/DatasourceId"
+      responses:
+        "204":
+          description: Datasource deleted
+  /api/summaries/{summaryId}:
+    get:
+      summary: Retrieve an existing summary by id
+      parameters:
+        - $ref: "#/components/parameters/SummaryId"
+      responses:
+        "200":
+          description: Summary returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryResponse"
+  /api/summaries/projects:
+    post:
+      summary: Generate a project summary across the project's linked datasources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateProjectSummaryRequest"
+      responses:
+        "200":
+          description: Project summary generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryResponse"
+  /api/summaries/datasources:
+    post:
+      summary: Generate a datasource summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateDatasourceSummaryRequest"
+      responses:
+        "200":
+          description: Datasource summary generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SummaryResponse"
   /api/summaries/providers:
     post:
       summary: Generate a tenant-scoped provider summary with bibliography citations
@@ -43,6 +219,10 @@ components:
       properties:
         providerKey:
           type: string
+        settings:
+          type: object
+          additionalProperties:
+            type: string
     EnablePluginResponse:
       type: object
       properties:
@@ -56,7 +236,7 @@ components:
           format: date-time
     GenerateProviderSummaryRequest:
       type: object
-      required: [providerKey, fromUtc, toUtc]
+      required: [providerKey, fromUtc, toUtc, detailLevel, audienceTone, llmProvider]
       properties:
         providerKey:
           type: string
@@ -67,11 +247,17 @@ components:
           type: string
           format: date-time
         detailLevel:
-          type: string
-          enum: [Executive, Detailed]
+          type: integer
+          enum: [1, 2]
+          description: `1 = Executive`, `2 = Detailed`
         audienceTone:
+          type: integer
+          enum: [1, 2]
+          description: `1 = Technical`, `2 = NonTechnical`
+        llmProvider:
           type: string
-          enum: [Technical, NonTechnical]
+        llmModel:
+          type: string
     ProviderSummaryResponse:
       type: object
       properties:
@@ -82,3 +268,247 @@ components:
           type: string
         content:
           type: string
+    CreateProjectRequest:
+      type: object
+      required: [name, allowedUserIds, datasourceIds]
+      properties:
+        name:
+          type: string
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        datasourceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    UpdateProjectRequest:
+      type: object
+      required: [name, allowedUserIds, datasourceIds]
+      properties:
+        name:
+          type: string
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        datasourceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdByUserId:
+          type: string
+        createdAtUtc:
+          type: string
+          format: date-time
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        datasourceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+    CreateDatasourceRequest:
+      type: object
+      required: [name, type, isActive, accessScope, allowedUserIds, connectionDetails]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        isActive:
+          type: boolean
+        accessScope:
+          type: integer
+          enum: [1, 2, 3]
+          description: `1 = ProjectOnly`, `2 = UserOnly`, `3 = ProjectAndUser`
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        connectionDetails:
+          type: object
+          additionalProperties:
+            type: string
+    UpdateDatasourceRequest:
+      type: object
+      required: [name, type, isActive, accessScope, allowedUserIds]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        isActive:
+          type: boolean
+        accessScope:
+          type: integer
+          enum: [1, 2, 3]
+          description: `1 = ProjectOnly`, `2 = UserOnly`, `3 = ProjectAndUser`
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        connectionDetails:
+          type: object
+          additionalProperties:
+            type: string
+    DatasourceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        createdByUserId:
+          type: string
+        createdAtUtc:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+        accessScope:
+          type: integer
+          enum: [1, 2, 3]
+          description: `1 = ProjectOnly`, `2 = UserOnly`, `3 = ProjectAndUser`
+        allowedUserIds:
+          type: array
+          items:
+            type: string
+        connectionDetailsPreview:
+          type: object
+          additionalProperties:
+            type: string
+    GenerateProjectSummaryRequest:
+      type: object
+      required: [requesterId, projectId, fromUtc, toUtc, requestedModes, llmProvider]
+      properties:
+        requesterId:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+        fromUtc:
+          type: string
+          format: date-time
+        toUtc:
+          type: string
+          format: date-time
+        requestedModes:
+          type: array
+          items:
+            type: integer
+            enum: [1, 2, 4]
+            description: `1 = Executive`, `2 = Detailed`, `4 = Delta`
+        llmProvider:
+          type: string
+        llmModel:
+          type: string
+        comparisonSummaryId:
+          type: string
+          format: uuid
+    GenerateDatasourceSummaryRequest:
+      type: object
+      required: [requesterId, datasourceId, fromUtc, toUtc, requestedModes, llmProvider]
+      properties:
+        requesterId:
+          type: string
+        datasourceId:
+          type: string
+          format: uuid
+        fromUtc:
+          type: string
+          format: date-time
+        toUtc:
+          type: string
+          format: date-time
+        requestedModes:
+          type: array
+          items:
+            type: integer
+            enum: [1, 2, 4]
+            description: `1 = Executive`, `2 = Detailed`, `4 = Delta`
+        llmProvider:
+          type: string
+        llmModel:
+          type: string
+        comparisonSummaryId:
+          type: string
+          format: uuid
+    SummaryResponse:
+      type: object
+      properties:
+        summaryId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        targetType:
+          type: integer
+          enum: [1, 2, 3]
+          description: `1 = Provider`, `2 = Project`, `3 = Datasource`
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+        datasourceId:
+          type: string
+          format: uuid
+          nullable: true
+        requestedModes:
+          type: string
+          description: Flags enum persisted by the API response model.
+        llmProviderKey:
+          type: string
+        llmModel:
+          type: string
+          nullable: true
+        requestedByUserId:
+          type: string
+        fromUtc:
+          type: string
+          format: date-time
+        toUtc:
+          type: string
+          format: date-time
+        createdAtUtc:
+          type: string
+          format: date-time
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DatasourceId:
+      name: datasourceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SummaryId:
+      name: summaryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid

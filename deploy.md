@@ -11,7 +11,7 @@ Before deploying, make sure you have:
 - A production OIDC identity provider that issues JWTs with:
   - `tenant_id`
   - user identity claim
-  - role claims such as `TenantAdmin` and `StandardUser`
+  - role claims such as `TenantAdmin`, `StandardUser`, `ProjectManager`, and `DataSourceManager`
 - Durable shared storage for ASP.NET Core Data Protection keys
   - Example: mounted persistent volume, cloud file share, or equivalent shared filesystem
 - A container runtime or VM host for the application
@@ -74,6 +74,7 @@ Optional settings:
 
 - `Features__provider-summary`
 - `Features__Tenants__{tenantId}__provider-summary`
+- provider-specific LLM credentials and model configuration, if non-template adapters are introduced
 
 Example environment variables:
 
@@ -149,25 +150,38 @@ Required roles:
 
 - `TenantAdmin`
 - `StandardUser`
+- `ProjectManager`
+- `DataSourceManager`
 
 Without these claims, the API will reject requests.
 
 ## 7. Prepare the Database
 
-This repo currently contains the EF Core model but not migrations.
+This repo contains EF Core migrations for the current schema.
 
-Before production launch, you should:
+Before production launch:
 
-1. Create EF Core migrations for the current schema.
-2. Review them.
-3. Apply them to the production database during deployment.
+1. Review the checked-in migrations.
+2. Apply them to the target database as part of deployment.
+3. Treat future schema changes as migration-backed releases only.
 
-Current core tables implied by the model:
+Current schema includes at least:
 
 - `tenant_plugins`
 - `generated_summaries`
+- `projects`
+- `project_users`
+- `project_datasources`
+- `datasources`
+- `datasource_users`
 
-Until migrations are added, deployment is incomplete for a real production rollout.
+Apply migrations during deployment with:
+
+```bash
+dotnet ef database update \
+  --project src/Uvse.Infrastructure/Uvse.Infrastructure.csproj \
+  --startup-project src/Uvse.Web/Uvse.Web.csproj
+```
 
 ## 8. Deploy the Application
 
@@ -256,12 +270,17 @@ Test with a valid JWT containing:
 Then call:
 
 - `POST /api/admin/plugins/enable`
+- `POST /api/summaries/projects`
+- `POST /api/summaries/datasources`
 - `POST /api/summaries/providers`
 
 Confirm:
 
 - `TenantAdmin` can enable plugins
-- `StandardUser` can generate summaries
+- allow-listed `ProjectManager` users can generate project summaries
+- allow-listed `DataSourceManager` users can generate datasource summaries
+- allow-listed project users can retrieve project summaries
+- allow-listed datasource users can retrieve only datasource summaries they requested
 - invalid or missing tokens return `401`
 - authenticated users without permission return `403`
 
@@ -308,7 +327,21 @@ At minimum:
 - collect RED metrics
 - alert on 5xx rate, auth failure spikes, and startup failures
 
-## 12. Security Checklist
+## 12. Provider and Summary Configuration Notes
+
+Summary generation now accepts an `llmProvider` and optional `llmModel` on request payloads.
+
+Current built-in provider keys:
+
+- `template`
+- `openai`
+- `gemini`
+- `claude`
+- `copilot`
+
+At present these keys share the same template-backed implementation, which means no external LLM API calls are made yet. Before a production rollout that depends on a non-template provider, add and validate the corresponding infrastructure adapter and its credential/configuration path.
+
+## 13. Security Checklist
 
 Before go-live, confirm:
 
